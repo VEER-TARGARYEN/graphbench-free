@@ -16,10 +16,14 @@
 # memory cap is fiction - the single most common way a "parity" benchmark is not one.
 
 x-parity: &parity
-  cpus: "0.5"
-  mem_limit: 512m
-  memswap_limit: 512m          # equal to mem_limit => swap disabled
-  cpuset: "3"                  # pin engines to core 3; keep 0-2 for the load generator
+  cpus: "${GBF_PARITY_CPUS:-0.5}"
+  mem_limit: "${GBF_PARITY_MEM:-512m}"
+  memswap_limit: "${GBF_PARITY_MEM:-512m}"   # equal to mem_limit => swap disabled
+  # Pin the engine away from the load generator. The default assumes a 2-vCPU VM:
+  # engine on core 1, generator free to use core 0. On a 4-vCPU box use "2,3".
+  # Getting this wrong on a small VM means the generator and the engine fight for the
+  # same core and you publish client queueing as database latency.
+  cpuset: "${GBF_PARITY_CPUSET:-1}"
   restart: "no"
 
 services:
