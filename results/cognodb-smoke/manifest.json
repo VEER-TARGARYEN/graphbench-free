@@ -1,0 +1,394 @@
+{
+  "run_id": "cognodb-smoke",
+  "started_utc": "2026-08-21T12:10:03Z",
+  "scale": "S",
+  "phases": [
+    "load",
+    "equivalence"
+  ],
+  "warmup_modes": [
+    "cold",
+    "hot"
+  ],
+  "concurrency": [
+    1,
+    10,
+    40
+  ],
+  "iterations": 300,
+  "dataset": {
+    "dataset": "cit-HepPh",
+    "source": "https://snap.stanford.edu/data/cit-HepPh.html",
+    "raw": {
+      "nodes": 34546,
+      "edges": 421578,
+      "edges_sha256": "917e77b3344aed33fd2d849443c9512b7c528b9dc87251d4245fb3777bbe4128",
+      "dates_sha256": "889927d82a95134b44266ba07fd73333fdb741d01bcda557284d0cb05890228f"
+    },
+    "scales": {
+      "M": {
+        "date_cutoff": null,
+        "nodes": 30558,
+        "edges": 347268,
+        "year_min": "1992",
+        "year_max": "2002",
+        "distinct_years": 11,
+        "files": {
+          "nodes.csv": {
+            "sha256": "b570bcc31ab142348390c139799a83db137184a63b20e8151467180380459de9",
+            "bytes": 717660
+          },
+          "edges.csv": {
+            "sha256": "b4c376aeac8ab1e2c4946011addb2729389d449502b8bbc0c4def4c1e2a66a2e",
+            "bytes": 5223036
+          }
+        }
+      },
+      "S": {
+        "date_cutoff": "1999-02-26",
+        "nodes": 18265,
+        "edges": 149969,
+        "year_min": "1992",
+        "year_max": "1999",
+        "distinct_years": 8,
+        "files": {
+          "nodes.csv": {
+            "sha256": "e90eb1b53310e3888770edce04db8c1fb9198ffdb908b81584090dead749cd97",
+            "bytes": 438387
+          },
+          "edges.csv": {
+            "sha256": "76f657b64608789f211100260d128f82eafd2b5b14987cda2169b08e72d14371",
+            "bytes": 2399512
+          }
+        }
+      }
+    },
+    "excluded_nodes_no_date": 3988
+  },
+  "curation": {
+    "scale": "S",
+    "seed": 42,
+    "sample_size": 200,
+    "band_percentiles": [
+      40,
+      60
+    ],
+    "depths": {
+      "1": {
+        "curated": {
+          "band_lo": 5,
+          "band_hi": 8,
+          "candidates_in_band": 3760,
+          "chosen": 200,
+          "frontier_min": 5,
+          "frontier_max": 8,
+          "frontier_median": 6.0,
+          "frontier_stdev": 1.09,
+          "population_median": 6,
+          "population_stdev": 11.08,
+          "population_max": 242
+        },
+        "uncurated": {
+          "chosen": 200,
+          "frontier_min": 1,
+          "frontier_max": 194,
+          "frontier_median": 6.0,
+          "frontier_stdev": 17.49
+        }
+      },
+      "2": {
+        "curated": {
+          "band_lo": 19,
+          "band_hi": 44,
+          "candidates_in_band": 3039,
+          "chosen": 200,
+          "frontier_min": 19,
+          "frontier_max": 44,
+          "frontier_median": 28.0,
+          "frontier_stdev": 7.26,
+          "population_median": 30,
+          "population_stdev": 82.55,
+          "population_max": 993
+        },
+        "uncurated": {
+          "chosen": 200,
+          "frontier_min": 1,
+          "frontier_max": 581,
+          "frontier_median": 35.0,
+          "frontier_stdev": 90.14
+        }
+      },
+      "3": {
+        "curated": {
+          "band_lo": 52,
+          "band_hi": 146,
+          "candidates_in_band": 2702,
+          "chosen": 200,
+          "frontier_min": 52,
+          "frontier_max": 144,
+          "frontier_median": 91.5,
+          "frontier_stdev": 26.48,
+          "population_median": 91,
+          "population_stdev": 312.55,
+          "population_max": 2674
+        },
+        "uncurated": {
+          "chosen": 200,
+          "frontier_min": 1,
+          "frontier_max": 1238,
+          "frontier_median": 107.0,
+          "frontier_stdev": 289.61
+        }
+      }
+    },
+    "dates": {
+      "distinct": 2329,
+      "min": "1992-02-11",
+      "max": "1999-02-26",
+      "rows_per_probe_median": 7,
+      "rows_per_probe_max": 29
+    },
+    "years": {
+      "distinct": 8,
+      "min": "1992",
+      "max": "1999"
+    }
+  },
+  "platform_order": [
+    "cognodb"
+  ],
+  "platforms": {
+    "cognodb": {
+      "id": "cognodb",
+      "label": "CognoDB Cloud (c0)",
+      "track": "A",
+      "advertised": {
+        "published": true,
+        "vcpu": "burst to 0.5",
+        "ram_mb": 512,
+        "disk_gb": 1,
+        "max_connections": 200,
+        "iops": "up to 500",
+        "price_usd_month": 0,
+        "source": "https://cognodb.com/pricing",
+        "verified_on": "2026-08-20"
+      },
+      "notes": "The assignment brief states 256 MB; the vendor's own pricing page states 512 MB. Re-verify in the console and record what the instance actually reports. Cloud-only - no self-hosted image is documented, so there is no track-B twin. Ships no vector search and no graph algorithms (vendor's developer page), so no workload may depend on GDS-style procedures.",
+      "verify": {
+        "reachable": true,
+        "round_trip_ms": 1384.04,
+        "identity_errors": [
+          "components: CypherSyntaxError"
+        ],
+        "version": [
+          {
+            "1": 1
+          }
+        ]
+      },
+      "ingest": {
+        "total_wall_clock_sec": 50.601,
+        "nodes_per_sec": 3158.5,
+        "relationships_per_sec": 3392.4,
+        "phases": [
+          {
+            "phase": "load_nodes",
+            "seconds": 5.783,
+            "items": 18265,
+            "items_per_sec": 3158.5
+          },
+          {
+            "phase": "index_id",
+            "seconds": 0.311,
+            "items": 1,
+            "items_per_sec": null
+          },
+          {
+            "phase": "load_edges",
+            "seconds": 44.207,
+            "items": 149969,
+            "items_per_sec": 3392.4
+          },
+          {
+            "phase": "index_secondary",
+            "seconds": 0.3,
+            "items": 1,
+            "items_per_sec": null
+          }
+        ],
+        "index_ddl": [
+          "index_id: CREATE INDEX paper_id IF NOT EXISTS FOR (p:Paper) ON (p.id)",
+          "index_secondary: CREATE INDEX paper_date IF NOT EXISTS FOR (p:Paper) ON (p.pub_date)"
+        ],
+        "errors": [],
+        "observed_counts": {
+          "nodes": 18265,
+          "relationships": 149969
+        },
+        "expected_counts": {
+          "nodes": 18265,
+          "relationships": 149969
+        },
+        "counts_match": true
+      },
+      "calibration": {
+        "enabled": true,
+        "probe_workload": "lookup_point",
+        "probe_samples": 30,
+        "probe_p50_ms": 267.571,
+        "single_client_capacity_qps": 3.74,
+        "safety_factor": 0.6,
+        "configured_ceilings": {
+          "1": 20,
+          "10": 100,
+          "40": 200
+        },
+        "rates": {
+          "1": 2.24,
+          "10": 22.42,
+          "40": 89.7
+        }
+      },
+      "equivalence": {
+        "lookup_point": {
+          "row_count": 1,
+          "sha256": "1b1e3fb8c489160f6831b88f749ef764b5c50082f7d91f6eb0544ad6da6ac2eb",
+          "preview": [
+            [
+              [
+                "id",
+                9304244
+              ],
+              [
+                "year",
+                1993
+              ]
+            ]
+          ],
+          "params": {
+            "paper_id": 9304244
+          }
+        },
+        "lookup_indexed": {
+          "row_count": 1,
+          "sha256": "fd8353c6adb63a65382f94c6982ccc285ba84630d0a175fcee3a04308fd19500",
+          "preview": [
+            [
+              [
+                "n",
+                1
+              ]
+            ]
+          ],
+          "params": {
+            "pub_date": "1992-02-11"
+          }
+        },
+        "traversal_1hop": {
+          "row_count": 1,
+          "sha256": "3d75a093a3a2868a8156f436666c761febb7f1d085e76050ae65658258a4d095",
+          "preview": [
+            [
+              [
+                "n",
+                5
+              ]
+            ]
+          ],
+          "params": {
+            "paper_id": 9304244
+          }
+        },
+        "traversal_2hop": {
+          "row_count": 1,
+          "sha256": "a6fa18159725fd98ca8972a11620193e65b9fd5b2ced41c6837506a05c0e571b",
+          "preview": [
+            [
+              [
+                "n",
+                20
+              ]
+            ]
+          ],
+          "params": {
+            "paper_id": 9404271
+          }
+        },
+        "traversal_3hop": {
+          "row_count": 1,
+          "sha256": "2220ca574a2f6c1d1300e229014221bd4b54c22024688117a574464c05098c19",
+          "preview": [
+            [
+              [
+                "n",
+                57
+              ]
+            ]
+          ],
+          "params": {
+            "paper_id": 9407251
+          }
+        },
+        "aggregation_by_year": {
+          "row_count": 8,
+          "sha256": "cee43e1c05b2d6f4b4fa2dd7bd8281162b2e2b5acfae0b99d05231b12db0adc6",
+          "preview": [
+            [
+              [
+                "n",
+                582
+              ],
+              [
+                "year",
+                1992
+              ]
+            ],
+            [
+              [
+                "n",
+                1535
+              ],
+              [
+                "year",
+                1993
+              ]
+            ],
+            [
+              [
+                "n",
+                2304
+              ],
+              [
+                "year",
+                1994
+              ]
+            ]
+          ],
+          "params": {}
+        }
+      },
+      "footprint": {
+        "observable": false,
+        "probes": {
+          "store_sizes": {
+            "error": "CypherSyntaxError"
+          }
+        },
+        "reason": "platform exposes no queryable size or memory metric over Bolt"
+      }
+    }
+  },
+  "equivalence_report": {
+    "agree": [
+      "aggregation_by_year",
+      "lookup_indexed",
+      "lookup_point",
+      "traversal_1hop",
+      "traversal_2hop",
+      "traversal_3hop"
+    ],
+    "diverge": {},
+    "verdict": "all platforms agree"
+  },
+  "finished_utc": "2026-08-21T12:11:08Z"
+}

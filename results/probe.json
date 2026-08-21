@@ -1,0 +1,113 @@
+{
+  "platforms": [
+    {
+      "id": "cognodb",
+      "label": "CognoDB Cloud (c0)",
+      "track": "A",
+      "enabled": true,
+      "advertised": {
+        "published": true,
+        "vcpu": "burst to 0.5",
+        "ram_mb": 512,
+        "disk_gb": 1,
+        "max_connections": 200,
+        "iops": "up to 500",
+        "price_usd_month": 0,
+        "source": "https://cognodb.com/pricing",
+        "verified_on": "2026-08-20"
+      },
+      "reachable": true,
+      "capabilities": {
+        "basic_return": {
+          "supported": true,
+          "why": "Bolt handshake and Cypher parsing"
+        },
+        "parameters": {
+          "supported": true,
+          "why": "parameterised queries - mandatory, never concatenate"
+        },
+        "unwind_create": {
+          "supported": true,
+          "why": "the batching construct every load depends on"
+        },
+        "count_distinct": {
+          "supported": true,
+          "why": "the k-hop metric's aggregate"
+        },
+        "order_by": {
+          "supported": true,
+          "why": "aggregation workload ordering"
+        },
+        "explain": {
+          "supported": true,
+          "why": "plan inspection for root-cause analysis"
+        },
+        "profile": {
+          "supported": true,
+          "why": "profiled execution for root-cause analysis"
+        },
+        "fixed_len_pattern": {
+          "supported": true,
+          "why": "fixed-length multi-hop - the traversal metric"
+        },
+        "var_len_pattern": {
+          "supported": true,
+          "why": "variable-length paths - NOT used by this benchmark, probed only to document support"
+        },
+        "show_indexes": {
+          "supported": true,
+          "why": "index introspection for the fairness ledger"
+        },
+        "dbms_components": {
+          "supported": false,
+          "why": "server identity",
+          "error": "CypherSyntaxError",
+          "detail": "{code: Neo.ClientError.Statement.SyntaxError} {message: There is no procedure with the name `dbms.components` registered for this database instance. Please ensure you've spelled the procedure name cor"
+        },
+        "apoc_present": {
+          "supported": false,
+          "why": "APOC availability (expected absent on managed tiers)",
+          "error": "ClientError",
+          "detail": "{code: Neo.ClientError.Statement.SemanticError} {message: Unknown function 'apoc.version'}"
+        },
+        "gds_present": {
+          "supported": false,
+          "why": "graph algorithms (CognoDB documents these as absent)",
+          "error": "CypherSyntaxError",
+          "detail": "{code: Neo.ClientError.Statement.SyntaxError} {message: There is no procedure with the name `gds.version` registered for this database instance. Please ensure you've spelled the procedure name correct"
+        }
+      },
+      "server": {
+        "round_trip_ms": 1544.16,
+        "identity_errors": [
+          "components: CypherSyntaxError"
+        ],
+        "version": [
+          {
+            "1": 1
+          }
+        ]
+      },
+      "baseline_rtt_ms": {
+        "samples": 20,
+        "min": 265.136,
+        "p50": 266.141,
+        "p95": 278.373,
+        "max": 278.373
+      },
+      "counts": {
+        "nodes": 0,
+        "relationships": 0
+      },
+      "footprint": {
+        "observable": false,
+        "probes": {
+          "store_sizes": {
+            "error": "CypherSyntaxError"
+          }
+        },
+        "reason": "platform exposes no queryable size or memory metric over Bolt"
+      }
+    }
+  ]
+}

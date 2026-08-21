@@ -28,6 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from harness import config as cfg  # noqa: E402
+from harness import environment as envmod  # noqa: E402
 from harness import equivalence as eq  # noqa: E402
 from harness.scheduler import Op, as_ops, build_schedule, run_open_loop, weighted_op_stream  # noqa: E402
 from harness.workloads import cit_hepph as W  # noqa: E402
@@ -91,6 +92,69 @@ def phase_load(adapter, wl: dict, scale: str, wipe: bool) -> dict:
         print(f"    WARN    post-load counts differ: {observed} != "
               f"{{'nodes': {len(nodes)}, 'relationships': {len(edges)}}}")
     return d
+
+
+def phase_calibrate(adapter, wl: dict, concurrency: list[int]) -> dict:
+    """Measure achievable throughput, then derive offered rates from it.
+
+    Without this, the offered rate is a guess. On a WAN-reached managed tier the round
+    trip is mostly geography - an instance in us-east measured from South Asia costs
+    ~265 ms before the engine does anything - so a single client cannot exceed ~3.8
+    ops/s no matter how fast the database is. Offering the configured 20 ops/s into that
+    would queue instantly and fail the on-time gate everywhere, and reporting that as
+    throttling would be reporting our own configuration error as a finding.
+    """
+    proto = wl["protocol"]
+    cal = proto.get("rate_calibration", {})
+    configured = {int(k): v for k, v in proto["target_rates"].items()}
+    if not cal.get("enabled", True):
+        return {"enabled": False, "rates": configured}
+
+    spec = next(s for s in wl["workloads"] if s["id"] == cal["probe_workload"])
+    pool = param_pool(spec)
+    query = W.QUERIES[cal["probe_workload"]]
+    timeout = proto["timeouts"]["per_query_sec"]
+
+    samples: list[float] = []
+    for i in range(cal["probe_samples"]):
+        t0 = time.perf_counter()
+        try:
+            adapter.execute(0, query, pool[i % len(pool)], timeout=timeout)
+            samples.append(time.perf_counter() - t0)
+        except Exception:
+            continue
+    if not samples:
+        print("    calibration FAILED - no successful probe; falling back to configured ceilings")
+        return {"enabled": True, "failed": True, "rates": configured}
+
+    samples.sort()
+    p50 = samples[len(samples) // 2]
+    safety, floor = cal.get("safety_factor", 0.6), cal.get("min_rate", 0.5)
+
+    rates: dict[int, float] = {}
+    for w in concurrency:
+        achievable = w / p50
+        rate = max(floor, achievable * safety)
+        ceiling = configured.get(w)
+        rates[w] = round(min(rate, ceiling) if ceiling else rate, 2)
+
+    print(f"    calibration  probe p50 {p50 * 1000:.1f} ms over {len(samples)} samples "
+          f"-> single-client ceiling {1 / p50:.1f} ops/s")
+    for w in concurrency:
+        note = "" if rates[w] < (configured.get(w) or 1e9) else "  (configured ceiling)"
+        print(f"      {w:>2} clients: offering {rates[w]:>7.2f} q/s "
+              f"(capacity {w / p50:>7.1f}){note}")
+
+    return {
+        "enabled": True,
+        "probe_workload": cal["probe_workload"],
+        "probe_samples": len(samples),
+        "probe_p50_ms": round(p50 * 1000, 3),
+        "single_client_capacity_qps": round(1 / p50, 2),
+        "safety_factor": safety,
+        "configured_ceilings": configured,
+        "rates": rates,
+    }
 
 
 def phase_equivalence(adapter, wl: dict) -> dict:
@@ -165,10 +229,12 @@ def _run_workload(adapter, wl: dict, wid: str, pool: list[dict], *, iterations: 
 
 
 def phase_read(adapter, wl: dict, warmup_modes: list[str], iterations: int,
-               include_uncurated: bool) -> list[dict]:
+               include_uncurated: bool, rates: dict) -> list[dict]:
     proto = wl["protocol"]
     modes = {m["id"]: m for m in proto["warmup_modes"]}
-    rate = proto["target_rates"].get(1)
+    # Read workloads are LATENCY metrics, so they run at concurrency 1. The concurrency
+    # sweep belongs to the mixed workload, which is the throughput metric.
+    rate = rates.get(1) or proto["target_rates"].get(1)
     out: list[dict] = []
 
     for mode_id in warmup_modes:
@@ -202,7 +268,7 @@ def phase_read(adapter, wl: dict, warmup_modes: list[str], iterations: int,
     return out
 
 
-def phase_mixed(adapter, wl: dict, concurrency: list[int]) -> list[dict]:
+def phase_mixed(adapter, wl: dict, concurrency: list[int], rates: dict) -> list[dict]:
     proto, mixed = wl["protocol"], wl["mixed"]
     timeout = proto["timeouts"]["per_query_sec"]
     specs = {s["id"]: s for s in wl["workloads"]}
@@ -213,8 +279,8 @@ def phase_mixed(adapter, wl: dict, concurrency: list[int]) -> list[dict]:
           f"{mixed['duration_sec']}s per level, {mixed['arrival']} arrivals")
 
     for workers in concurrency:
-        rate = proto["target_rates"].get(workers) or proto["target_rates"].get(str(workers))
-        total = int((rate or 200) * mixed["duration_sec"])
+        rate = rates.get(workers) or proto["target_rates"].get(workers)
+        total = max(workers, int((rate or 200) * mixed["duration_sec"]))
         stream = weighted_op_stream(total, mixed["weights"], pools, seed=proto["ordering"]["randomize_seed"])
 
         # Synthetic ids assigned by sequence, so the exact same write stream is replayed
@@ -266,13 +332,35 @@ def estimate(wl: dict, platforms: list[dict], phases: list[str], warmup: list[st
              concurrency: list[int], iterations: int, include_uncurated: bool) -> None:
     proto = wl["protocol"]
     reads = [s for s in wl["workloads"] if s.get("read")]
+
+    # Use the MEASURED round trip from the last probe if there is one. Estimating from
+    # the configured ceiling is how you plan a 3-minute read phase and get a 29-minute
+    # one: over a WAN the achievable rate is concurrency / RTT, and RTT is geography.
     rate1 = proto["target_rates"].get(1) or 20
+    rtt_note = "configured ceiling"
+    probe_path = cfg.RESULTS / "probe.json"
+    if probe_path.exists():
+        try:
+            probed = json.loads(probe_path.read_text(encoding="utf-8"))["platforms"]
+            rtts = [p["baseline_rtt_ms"]["p50"] for p in probed
+                    if p.get("reachable") and p.get("baseline_rtt_ms")]
+            if rtts:
+                worst = max(rtts) / 1000.0
+                safety = proto.get("rate_calibration", {}).get("safety_factor", 0.6)
+                rate1 = min(rate1, max(0.5, safety / worst))
+                rtt_note = f"calibrated from measured {worst * 1000:.0f} ms RTT"
+        except Exception:
+            pass
 
     per_platform = 0.0
     lines = []
     if "load" in phases:
-        per_platform += 240
-        lines.append("  load           ~4 min  (18k nodes + 150k edges over the driver, tier dependent)")
+        # 169 batched round trips at scale S (19 node batches + 150 edge batches).
+        batches = 169
+        load_secs = max(60.0, batches / max(rate1, 0.5) if rate1 < 5 else 240.0)
+        per_platform += load_secs
+        lines.append(f"  load           ~{load_secs/60:.0f} min  "
+                     f"({batches} batched round trips + 2 index builds)")
     if "equivalence" in phases:
         per_platform += 20
         lines.append(f"  equivalence    ~20 s   ({len(reads)} read workloads x 1 execution)")
@@ -281,7 +369,8 @@ def estimate(wl: dict, platforms: list[dict], phases: list[str], warmup: list[st
         secs = n * iterations / rate1
         per_platform += secs
         lines.append(f"  read           ~{secs/60:.0f} min  "
-                     f"({len(reads)} workloads x {len(warmup)} warm-up modes x {iterations} iters @ {rate1}/s"
+                     f"({len(reads)} workloads x {len(warmup)} warm-up modes x {iterations} iters "
+                     f"@ {rate1:.2f}/s, {rtt_note}"
                      f"{' + 1 uncurated control' if include_uncurated else ''})")
     if "mixed" in phases:
         secs = len(concurrency) * wl["mixed"]["duration_sec"]
@@ -349,9 +438,14 @@ def main() -> int:
     outdir = cfg.RESULTS / run_id
     outdir.mkdir(parents=True, exist_ok=True)
 
+    env = envmod.capture()
+    print()
+    print(f"ENVIRONMENT  {envmod.summarise(env)}")
+
     manifest = {
         "run_id": run_id,
         "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "environment": env,
         "scale": args.scale,
         "phases": phases,
         "warmup_modes": warmup,
@@ -383,15 +477,18 @@ def main() -> int:
         try:
             if "load" in phases:
                 entry["ingest"] = phase_load(adapter, wl, args.scale, wipe=not args.no_wipe)
+            entry["calibration"] = phase_calibrate(adapter, wl, concurrency)
+            rates = entry["calibration"]["rates"]
             if "equivalence" in phases:
                 entry["equivalence"] = phase_equivalence(adapter, wl)
                 for wid, c in entry["equivalence"].items():
                     if "sha256" in c:
                         equivalence_table.setdefault(wid, {})[p["id"]] = c
             if "read" in phases:
-                entry["read"] = phase_read(adapter, wl, warmup, iterations, not args.no_uncurated)
+                entry["read"] = phase_read(adapter, wl, warmup, iterations,
+                                           not args.no_uncurated, rates)
             if "mixed" in phases:
-                entry["mixed"] = phase_mixed(adapter, wl, concurrency)
+                entry["mixed"] = phase_mixed(adapter, wl, concurrency, rates)
             entry["footprint"] = adapter.footprint()
         except KeyboardInterrupt:
             entry["error"] = "interrupted"

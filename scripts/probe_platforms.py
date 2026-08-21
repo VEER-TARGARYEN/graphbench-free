@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from harness import config as cfg  # noqa: E402
+from harness import environment as envmod  # noqa: E402
 
 # Each probe is (name, cypher, why-it-matters). A failure is information, not an error:
 # it tells us which workloads are safe to write and what to declare as a caveat.
@@ -163,9 +164,16 @@ def main() -> int:
         fp = r.get("footprint", {})
         print(f"  footprint    {'observable' if fp.get('observable') else 'NOT observable'}")
 
+    env = envmod.capture()
+    print()
+    print(f"ENVIRONMENT  {envmod.summarise(env)}")
+
     cfg.RESULTS.mkdir(parents=True, exist_ok=True)
     out = cfg.RESULTS / "probe.json"
-    out.write_text(json.dumps({"platforms": results}, indent=2) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps({"environment": env, "platforms": results}, indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(f"\nwrote {out.relative_to(cfg.ROOT)}")
 
     ok = [r for r in results if r["reachable"]]

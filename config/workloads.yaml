@@ -69,6 +69,27 @@ protocol:
     40: 200
   saturation_run: true
 
+  rate_calibration:
+    # The offered rates above are CEILINGS, not targets. The achievable rate is bounded
+    # by concurrency / round-trip-latency, and on a managed tier reached over a WAN the
+    # round trip is mostly geography: an instance in us-east measured from South Asia
+    # costs ~265 ms before the database does any work at all, capping a single client at
+    # under 4 ops/s.
+    #
+    # Offering 20 ops/s into a 3.8 ops/s pipe would queue instantly and fail the on-time
+    # gate on every platform - not because any database is slow, but because the harness
+    # asked for something physically impossible. That is a measurement of our own
+    # configuration error, and it would be dishonest to publish it as throttling.
+    #
+    # So: probe the achievable rate first, then offer a safe fraction of it. Both the
+    # configured ceiling and the calibrated rate are recorded in the results, so a reader
+    # can see exactly what was asked for and why.
+    enabled: true
+    probe_workload: lookup_point
+    probe_samples: 30
+    safety_factor: 0.6        # offer 60% of measured capacity, leaving headroom for jitter
+    min_rate: 0.5
+
   timeouts:
     # Pre-declared so that a timeout is a documented, comparable outcome rather than a
     # silently dropped run. A platform that times out is scored, not skipped.
