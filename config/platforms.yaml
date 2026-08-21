@@ -1,0 +1,224 @@
+# Platform registry.
+#
+# Every connection secret is read from the environment - nothing here is a credential.
+# `advertised` is transcribed verbatim from the vendor's own public page on `verified_on`,
+# with the URL, so the README's fairness ledger can be generated from this file rather
+# than hand-written. Where a vendor does not publish a figure, the value is `null` and
+# `published` is false - that absence is itself a reportable finding.
+#
+# track A = "as sold": the managed free/trial tier exactly as a developer receives it.
+#           Explicitly NOT apples-to-apples; the tiers differ by up to 20x.
+# track B = "cgroup parity": self-hosted, every engine capped identically.
+#           This is the scientific track. CognoDB cannot appear in it (cloud-only),
+#           which is itself worth a sentence in the analysis.
+
+defaults:
+  bolt:
+    # Applied to every Bolt platform unless overridden. Kept identical across
+    # platforms on purpose: connection-pool asymmetry is a benchmarking crime.
+    max_connection_pool_size: 50
+    connection_acquisition_timeout: 60
+    max_transaction_retry_time: 30
+    encrypted: null          # inferred from the URI scheme (bolt+s / neo4j+s => TLS)
+
+platforms:
+
+  # ─────────────────────────────────────────────────────────── system under test
+  - id: cognodb
+    label: CognoDB Cloud (c0)
+    adapter: bolt
+    track: A
+    enabled: true
+    env:
+      uri: GBF_COGNODB_URI          # bolt+s://<instance-id>.databases.cognodb.cloud
+      user: GBF_COGNODB_USER        # "cognodb"
+      password: GBF_COGNODB_PASSWORD
+    advertised:
+      published: true
+      vcpu: "burst to 0.5"
+      ram_mb: 512
+      disk_gb: 1
+      max_connections: 200
+      iops: "up to 500"
+      price_usd_month: 0
+      source: https://cognodb.com/pricing
+      verified_on: "2026-08-20"
+    notes: >-
+      The assignment brief states 256 MB; the vendor's own pricing page states 512 MB.
+      Re-verify in the console and record what the instance actually reports.
+      Cloud-only - no self-hosted image is documented, so there is no track-B twin.
+      Ships no vector search and no graph algorithms (vendor's developer page),
+      so no workload may depend on GDS-style procedures.
+
+  # ─────────────────────────────────────────────────────────── managed competitors
+  - id: aura_free
+    label: Neo4j AuraDB Free
+    adapter: bolt
+    track: A
+    enabled: false                 # opt in only after resolving the AUP question - see docs/LEGAL.md
+    env:
+      uri: GBF_AURA_URI
+      user: GBF_AURA_USER
+      password: GBF_AURA_PASSWORD
+    advertised:
+      published: false             # Neo4j publishes no vCPU or RAM figure for Aura Free
+      vcpu: null
+      ram_mb: null
+      disk_gb: null
+      max_connections: null
+      source: https://neo4j.com/cloud/platform/aura-graph-database/faq/
+      verified_on: "2026-08-20"
+    notes: >-
+      BLOCKED PENDING LEGAL CHECK. Neo4j's Acceptable Use Policy appears to prohibit
+      using the Service to benchmark the Service, and it governs Aura Self-Serve.
+      Do not enable until docs/LEGAL.md records a resolution (written permission,
+      anonymisation, or substitution with self-hosted Community Edition).
+      Two official Neo4j pages also disagree on the data cap (200k/400k vs 50k/175k).
+
+  - id: memgraph_cloud
+    label: Memgraph Cloud (trial)
+    adapter: bolt
+    track: A
+    enabled: false
+    env:
+      uri: GBF_MEMGRAPH_CLOUD_URI
+      user: GBF_MEMGRAPH_CLOUD_USER
+      password: GBF_MEMGRAPH_CLOUD_PASSWORD
+    advertised:
+      published: true
+      vcpu: null
+      ram_mb: 2048
+      disk_gb: null
+      max_connections: null
+      source: https://memgraph.com/pricing
+      verified_on: "2026-08-20"
+    notes: >-
+      No free tier - a 14-day trial at up to 2 GB, i.e. a ~4x OVERSHOOT of CognoDB's
+      envelope (FalkorDB Cloud is a ~5x undershoot). Quote both numbers in one sentence
+      and the case for a two-track design writes itself.
+      Uses a self-signed certificate: needs trust_all_certificates, set via `tls_insecure`.
+    tls_insecure: true
+
+  - id: falkordb_cloud
+    label: FalkorDB Cloud (free)
+    adapter: bolt
+    track: A
+    enabled: false
+    env:
+      uri: GBF_FALKORDB_URI
+      user: GBF_FALKORDB_USER
+      password: GBF_FALKORDB_PASSWORD
+    advertised:
+      published: true
+      vcpu: null
+      ram_mb: 100
+      disk_gb: 0                   # no persistence at all on the free tier
+      max_connections: null
+      source: https://docs.falkordb.com/cloud/free-tier.html
+      verified_on: "2026-08-20"
+    notes: >-
+      PROBE FIRST. FalkorDB's Bolt support is documented as experimental and not
+      recommended for production, and the Cloud free-tier page documents RESP, not Bolt.
+      If `scripts/probe_platforms.py` cannot open a Bolt session, this platform is
+      excluded and the exclusion is reported as a result.
+      100 MB RAM with no persistence and no backups; stopped after 1 idle day and
+      deleted after 7 - so a multi-day run schedule will destroy the data underneath you.
+
+  # ─────────────────────────────────────────────────────────── parity track (self-hosted)
+  - id: neo4j_ce_parity
+    label: Neo4j Community 5.x @ parity
+    adapter: bolt
+    track: B
+    enabled: false
+    env:
+      uri: GBF_NEO4J_CE_URI        # bolt://localhost:7687
+      user: GBF_NEO4J_CE_USER
+      password: GBF_NEO4J_CE_PASSWORD
+    advertised:
+      published: true
+      vcpu: "0.5 (cgroup)"
+      ram_mb: 512
+      disk_gb: 1
+      max_connections: null
+      source: "self-imposed cap, see docker/compose.parity.yml"
+      verified_on: "2026-08-20"
+    notes: >-
+      Expected to OOM at 512 MB: the stock image defaults to 512 MB heap + 512 MB
+      pagecache before JVM overhead. That is a RESULT, not a failure - bisect the
+      smallest cap at which it survives and report it. Also the bridge between tracks:
+      running Aura Free and CE at the cap separates "engine" from "tier".
+
+  - id: memgraph_parity
+    label: Memgraph Community @ parity
+    adapter: bolt
+    track: B
+    enabled: false
+    env:
+      uri: GBF_MEMGRAPH_PARITY_URI
+      user: GBF_MEMGRAPH_PARITY_USER
+      password: GBF_MEMGRAPH_PARITY_PASSWORD
+    advertised:
+      published: true
+      vcpu: "0.5 (cgroup)"
+      ram_mb: 512
+      disk_gb: 1
+      max_connections: null
+      source: "self-imposed cap, see docker/compose.parity.yml"
+      verified_on: "2026-08-20"
+    notes: >-
+      In-memory storage engine, so the RAM cap is an absolute dataset ceiling rather
+      than a page-cache constraint. Memgraph publishes an exact formula -
+      StorageRAMUsage = (Vertices x 204B) + (Edges x 154B) - so the fit can be proven
+      arithmetically before loading. At scale S that is roughly 30 MB.
+
+  - id: arcadedb_parity
+    label: ArcadeDB @ parity
+    adapter: bolt
+    track: B
+    enabled: false
+    env:
+      uri: GBF_ARCADEDB_URI
+      user: GBF_ARCADEDB_USER
+      password: GBF_ARCADEDB_PASSWORD
+    advertised:
+      published: true
+      vcpu: "0.5 (cgroup)"
+      ram_mb: 512
+      disk_gb: 1
+      max_connections: null
+      source: "self-imposed cap, see docker/compose.parity.yml"
+      verified_on: "2026-08-20"
+    notes: >-
+      The differentiated pick. Apache-2.0, native openCypher, and Bolt 3.0/4.0/4.4/5.0-5.4
+      negotiated automatically - the same protocol range CognoDB advertises - so the stock
+      Neo4j driver drives it unchanged and it costs zero new client code.
+      Source: https://docs.arcadedb.com/arcadedb/how-to/connectivity/bolt (verified 2026-08-20).
+      Do NOT repeat the widely-circulated "97.8% of the openCypher TCK" figure: it does not
+      appear on that page and could not be substantiated.
+
+  # ─────────────────────────────────────────────────────────── self-test only
+  # Not databases. These exist so the full pipeline - load, equivalence, open-loop
+  # dispatch, percentile recording, validity gate, charts - can be exercised with no
+  # network and no credentials, and so CI can run on a clone. Their numbers must never
+  # appear in the README.
+  - id: mock_fast
+    label: Mock engine (fast)
+    adapter: mock
+    track: SELFTEST
+    enabled: false
+    env: {}
+    simulate: {base_ms: 1.5, jitter_ms: 0.6, per_hop_ms: 0.8}
+    advertised: {published: false}
+    notes: Self-test fixture. Never publish these numbers.
+
+  - id: mock_throttled
+    label: Mock engine (burst-throttled)
+    adapter: mock
+    track: SELFTEST
+    enabled: false
+    env: {}
+    simulate: {base_ms: 1.5, jitter_ms: 0.6, per_hop_ms: 0.8, throttle_after: 400, throttle_factor: 30.0}
+    advertised: {published: false}
+    notes: >-
+      Self-test fixture simulating a burstable instance whose CPU-credit bucket drains
+      mid-run. Exists to prove the on-time validity gate fires rather than merely existing.

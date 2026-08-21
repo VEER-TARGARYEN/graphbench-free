@@ -1,0 +1,10 @@
+# Pinned for reproducibility. Generated 2026-08-20.
+# Python 3.12.
+
+neo4j==5.28.1            # official driver; drives CognoDB, Aura, Memgraph, FalkorDB, ArcadeDB
+hdrhistogram==0.10.3     # HdrHistogram_py - correct merged percentiles, coordinated-omission correction
+PyYAML==6.0.2
+matplotlib==3.9.2
+numpy==2.1.3
+requests==2.32.3
+python-dotenv==1.0.1

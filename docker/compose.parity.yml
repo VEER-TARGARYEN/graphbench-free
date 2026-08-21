@@ -1,0 +1,118 @@
+# Track B - cgroup parity.
+#
+# Every engine gets an IDENTICAL envelope, matching CognoDB's published free tier
+# (burst 0.5 vCPU / 512 MB / 1 GB). This is the only track that supports engine-to-engine
+# claims; track A compares tiers that differ by up to 20x and says so.
+#
+#   docker compose -f docker/compose.parity.yml up -d neo4j_ce
+#   python scripts/probe_platforms.py --only neo4j_ce_parity
+#
+# RUN ONE ENGINE AT A TIME. On a 4-core client, five containers at 0.5 vCPU each consume
+# 2.5 cores before the load generator starts, and you would publish client queueing as
+# database latency. `--cpuset-cpus` pins each engine away from the generator; verify with
+# `docker stats` that the generator is not the bottleneck.
+#
+# --memory-swap MUST equal --memory. Without it the container silently swaps and the
+# memory cap is fiction - the single most common way a "parity" benchmark is not one.
+
+x-parity: &parity
+  cpus: "0.5"
+  mem_limit: 512m
+  memswap_limit: 512m          # equal to mem_limit => swap disabled
+  cpuset: "3"                  # pin engines to core 3; keep 0-2 for the load generator
+  restart: "no"
+
+services:
+
+  neo4j_ce:
+    <<: *parity
+    image: neo4j:5.26-community
+    container_name: gbf-neo4j-ce
+    ports: ["7687:7687", "7474:7474"]
+    environment:
+      NEO4J_AUTH: "neo4j/benchpass123"
+      # The stock image defaults to 512M heap + 512M pagecache = 1 GB before JVM
+      # overhead, against a 512 MB cap. These values are the smallest that have any
+      # chance of starting. If it still OOMs, that is a RESULT: record the exact config
+      # attempted and bisect the smallest cap at which it survives.
+      NEO4J_server_memory_heap_initial__size: "192m"
+      NEO4J_server_memory_heap_max__size: "192m"
+      NEO4J_server_memory_pagecache_size: "128m"
+      NEO4J_db_tx__log_rotation_retention__policy: "100M size"
+      # Modern JVMs honour cgroup quotas by default; asserted explicitly so thread pools
+      # are not sized for the whole host.
+      NEO4J_server_jvm_additional: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+    volumes: ["neo4j_data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  memgraph:
+    <<: *parity
+    image: memgraph/memgraph:2.22.0
+    container_name: gbf-memgraph
+    ports: ["7688:7687"]
+    command:
+      - "--memory-limit=400"          # MB, leaves headroom inside the 512 MB cgroup
+      - "--storage-snapshot-on-exit=false"
+      - "--telemetry-enabled=false"
+      - "--log-level=WARNING"
+    volumes: ["memgraph_data:/var/lib/memgraph"]
+    # In-memory engine: the cap is an absolute dataset ceiling, not a page-cache
+    # constraint. Memgraph publishes the arithmetic -
+    #   StorageRAMUsage = (Vertices x 204B) + (Edges x 154B)
+    # At scale S: 18,265 x 204 + 149,969 x 154 ~= 27 MB. Comfortably inside 400 MB, and
+    # doing this sum BEFORE loading is how you avoid discovering an OOM mid-run.
+
+  arcadedb:
+    <<: *parity
+    image: arcadedata/arcadedb:25.1.1
+    container_name: gbf-arcadedb
+    ports: ["7689:7687", "2480:2480"]
+    environment:
+      JAVA_OPTS: >-
+        -Darcadedb.server.rootPassword=benchpass123
+        -Darcadedb.server.defaultDatabases=graphbench[root]
+        -Darcadedb.bolt.enabled=true
+        -Darcadedb.bolt.port=7687
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=70
+    volumes: ["arcade_data:/home/arcadedb/databases"]
+    # Speaks Bolt 3.0/4.0/4.4/5.0-5.4, negotiated automatically - the same range CognoDB
+    # advertises - with native openCypher, so the stock Neo4j driver drives it unchanged.
+    # Apache-2.0. Verified at docs.arcadedb.com/arcadedb/how-to/connectivity/bolt,
+    # 2026-08-20.
+
+  falkordb:
+    <<: *parity
+    image: falkordb/falkordb:latest
+    container_name: gbf-falkordb
+    ports: ["7690:7687", "6379:6379"]
+    environment:
+      FALKORDB_ARGS: "BOLT_PORT 7687"
+    volumes: ["falkor_data:/data"]
+    # Bolt support is documented as experimental and not recommended for production;
+    # Python is the only tested client. Probe before relying on it.
+
+  postgres:
+    <<: *parity
+    image: postgres:16-alpine
+    container_name: gbf-postgres
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_PASSWORD: "benchpass123"
+      POSTGRES_DB: "graphbench"
+    volumes: ["pg_data:/var/lib/postgresql/data"]
+    # The non-graph reference point, not a competitor. One WITH RECURSIVE query over the
+    # same edge table, same cap, same start-node parameter file. Commenters have asked
+    # for a relational baseline on multiple public graph-benchmark threads and no graph
+    # vendor has ever supplied one.
+
+volumes:
+  neo4j_data:
+  memgraph_data:
+  arcade_data:
+  falkor_data:
+  pg_data:

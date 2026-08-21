@@ -1,0 +1,89 @@
+{
+  "scale": "S",
+  "seed": 42,
+  "sample_size": 200,
+  "band_percentiles": [
+    40,
+    60
+  ],
+  "depths": {
+    "1": {
+      "curated": {
+        "band_lo": 5,
+        "band_hi": 8,
+        "candidates_in_band": 3760,
+        "chosen": 200,
+        "frontier_min": 5,
+        "frontier_max": 8,
+        "frontier_median": 6.0,
+        "frontier_stdev": 1.09,
+        "population_median": 6,
+        "population_stdev": 11.08,
+        "population_max": 242
+      },
+      "uncurated": {
+        "chosen": 200,
+        "frontier_min": 1,
+        "frontier_max": 194,
+        "frontier_median": 6.0,
+        "frontier_stdev": 17.49
+      }
+    },
+    "2": {
+      "curated": {
+        "band_lo": 19,
+        "band_hi": 44,
+        "candidates_in_band": 3039,
+        "chosen": 200,
+        "frontier_min": 19,
+        "frontier_max": 44,
+        "frontier_median": 28.0,
+        "frontier_stdev": 7.26,
+        "population_median": 30,
+        "population_stdev": 82.55,
+        "population_max": 993
+      },
+      "uncurated": {
+        "chosen": 200,
+        "frontier_min": 1,
+        "frontier_max": 581,
+        "frontier_median": 35.0,
+        "frontier_stdev": 90.14
+      }
+    },
+    "3": {
+      "curated": {
+        "band_lo": 52,
+        "band_hi": 146,
+        "candidates_in_band": 2702,
+        "chosen": 200,
+        "frontier_min": 52,
+        "frontier_max": 144,
+        "frontier_median": 91.5,
+        "frontier_stdev": 26.48,
+        "population_median": 91,
+        "population_stdev": 312.55,
+        "population_max": 2674
+      },
+      "uncurated": {
+        "chosen": 200,
+        "frontier_min": 1,
+        "frontier_max": 1238,
+        "frontier_median": 107.0,
+        "frontier_stdev": 289.61
+      }
+    }
+  },
+  "dates": {
+    "distinct": 2329,
+    "min": "1992-02-11",
+    "max": "1999-02-26",
+    "rows_per_probe_median": 7,
+    "rows_per_probe_max": 29
+  },
+  "years": {
+    "distinct": 8,
+    "min": "1992",
+    "max": "1999"
+  }
+}

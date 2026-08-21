@@ -1,0 +1,12 @@
+# Force LF everywhere.
+#
+# This is not cosmetic. params/*.csv are the frozen query parameters, and the whole
+# fairness argument is that every platform receives BYTE-IDENTICAL parameters. If git
+# checked these out as CRLF on Windows and LF on Linux, two people running the same
+# benchmark would be sending different bytes and any checksum comparison between their
+# results would be meaningless.
+
+* text=auto eol=lf
+
+*.png binary
+*.gz  binary

@@ -1,0 +1,49 @@
+{
+  "dataset": "cit-HepPh",
+  "source": "https://snap.stanford.edu/data/cit-HepPh.html",
+  "raw": {
+    "nodes": 34546,
+    "edges": 421578,
+    "edges_sha256": "917e77b3344aed33fd2d849443c9512b7c528b9dc87251d4245fb3777bbe4128",
+    "dates_sha256": "889927d82a95134b44266ba07fd73333fdb741d01bcda557284d0cb05890228f"
+  },
+  "scales": {
+    "M": {
+      "date_cutoff": null,
+      "nodes": 30558,
+      "edges": 347268,
+      "year_min": "1992",
+      "year_max": "2002",
+      "distinct_years": 11,
+      "files": {
+        "nodes.csv": {
+          "sha256": "b570bcc31ab142348390c139799a83db137184a63b20e8151467180380459de9",
+          "bytes": 717660
+        },
+        "edges.csv": {
+          "sha256": "b4c376aeac8ab1e2c4946011addb2729389d449502b8bbc0c4def4c1e2a66a2e",
+          "bytes": 5223036
+        }
+      }
+    },
+    "S": {
+      "date_cutoff": "1999-02-26",
+      "nodes": 18265,
+      "edges": 149969,
+      "year_min": "1992",
+      "year_max": "1999",
+      "distinct_years": 8,
+      "files": {
+        "nodes.csv": {
+          "sha256": "e90eb1b53310e3888770edce04db8c1fb9198ffdb908b81584090dead749cd97",
+          "bytes": 438387
+        },
+        "edges.csv": {
+          "sha256": "76f657b64608789f211100260d128f82eafd2b5b14987cda2169b08e72d14371",
+          "bytes": 2399512
+        }
+      }
+    }
+  },
+  "excluded_nodes_no_date": 3988
+}
