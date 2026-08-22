@@ -51,10 +51,9 @@ class BoltAdapter(Adapter):
         uri = os.environ.get(env["uri"], "").strip()
         user = os.environ.get(env["user"], "").strip()
         password = os.environ.get(env["password"], "")
-        missing = [k for k, v in (("uri", uri), ("user", user), ("password", password)) if not v]
-        if missing:
+        if not uri:
             raise RuntimeError(
-                f"{self.platform_id}: missing {', '.join(env[m] for m in missing)} in the environment. "
+                f"{self.platform_id}: missing {env['uri']} in the environment. "
                 f"Copy .env.example to .env and fill it in - credentials are never committed."
             )
         if self.config.get("tls_insecure") and "+s://" in uri:
@@ -62,7 +61,11 @@ class BoltAdapter(Adapter):
             # certificate not verified. Preferred over a global trust override because
             # it stays scoped to the one platform that needs it, and it is visible.
             uri = uri.replace("+s://", "+ssc://")
-        return uri, (user, password)
+        # Self-hosted engines frequently ship with authentication disabled - Memgraph
+        # Community and a default FalkorDB container both do. The driver wants auth=None
+        # for those, not an empty tuple, which it would try to send as a credential.
+        auth = (user, password) if user else None
+        return uri, auth
 
     def connect(self) -> None:
         uri, auth = self._resolve_uri()

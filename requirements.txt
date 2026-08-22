@@ -1,10 +1,18 @@
-# Pinned for reproducibility. Generated 2026-08-20.
-# Python 3.12.
+# Runtime dependencies - everything needed to MEASURE.
+#
+# Deliberately minimal. These three are the entire measurement path, and all three
+# ship prebuilt wheels for CPython 3.12 through 3.14, so a benchmark client provisions
+# in seconds on any current distribution without a compiler.
+#
+# That is not a cosmetic concern. The first attempt to provision an AWS client failed
+# because Ubuntu 26.04 ships Python 3.14, the pinned matplotlib and numpy had no wheels
+# for it, and building them from source was OOM-killed on a 908 MB instance. Charting
+# is not part of measurement, so it no longer blocks measurement - see
+# requirements-charts.txt.
+#
+#   pip install -r requirements.txt                 # to run the benchmark
+#   pip install -r requirements-charts.txt          # to render charts (optional, off-box)
 
-neo4j==5.28.1            # official driver; drives CognoDB, Aura, Memgraph, FalkorDB, ArcadeDB
-hdrhistogram==0.10.3     # HdrHistogram_py - correct merged percentiles, coordinated-omission correction
-PyYAML==6.0.2
-matplotlib==3.9.2
-numpy==2.1.3
-requests==2.32.3
-python-dotenv==1.0.1
+neo4j==5.28.1            # official driver; drives CognoDB, Neo4j, Memgraph, FalkorDB, ArcadeDB
+hdrhistogram==0.10.7     # HdrHistogram_py - merged percentiles, coordinated-omission correction
+PyYAML==6.0.3            # config loading

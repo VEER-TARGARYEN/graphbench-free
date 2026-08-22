@@ -1,0 +1,16 @@
+# Charting dependencies - needed only to RENDER results, never to produce them.
+#
+# Kept separate on purpose. Charts are generated from committed results JSON, so they
+# can be rendered on any machine at any time - including a laptop, long after the
+# benchmark client has been destroyed. Nothing here participates in a measurement, so
+# an exact pin buys nothing and costs portability: matplotlib carries a large compiled
+# dependency tree, and on a small cloud instance building it from source is the
+# difference between a client that provisions in 30 seconds and one that OOMs.
+#
+#   pip install -r requirements-charts.txt
+#   python scripts/make_charts.py --run <run-id>
+#
+# A floor rather than a pin, because chart cosmetics do not affect reproducibility of
+# the numbers. If you want byte-identical PNGs, pin these yourself.
+
+matplotlib>=3.9
