@@ -9,11 +9,12 @@ histograms are all committed, so the results can be re-derived rather than trust
 I sell nothing and am not affiliated with any database vendor.
 
 > **Status — read this first.** Two engines are fully measured: **CognoDB Cloud (c0)** and
-> **Memgraph Community** under a resource cap. Three further engines were attempted and
-> failed to start on the free-tier client; those failures are reported in
-> [What went wrong](#what-went-wrong) rather than omitted. The brief asks for five
-> platforms and this has two. The methodology is the part I would defend; the coverage is
-> the part I would not.
+> **Memgraph Community** under a resource cap. Three further engines — FalkorDB, Neo4j
+> Community, ArcadeDB — were attempted on the same free-tier client and none started; each
+> failure was isolated to a specific, different root cause rather than reported as a
+> generic timeout, and all three are in [What went wrong](#what-went-wrong). The brief asks
+> for five platforms and this has two measured plus three diagnosed exclusions. The
+> methodology is the part I would defend; the coverage is the part I would not.
 
 ---
 
@@ -146,7 +147,10 @@ result checksums** and a **terms-of-service audit** ([docs/LEGAL.md](docs/LEGAL.
 |---|---|---|---|---|:--:|---:|:--:|
 | CognoDB Cloud c0 | burst 0.5 | 512 MB | 1 GB | 200 | **yes** (all four) | 3.92 ms | no |
 | Memgraph CE @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | ~0 (loopback) | no |
-| Neo4j AuraDB Free | — | — | — | — | **no** | not run | — |
+| Neo4j CE @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | **excluded** — did not start | — |
+| ArcadeDB @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | **excluded** — JVM OOM at cap | — |
+| FalkorDB @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | **excluded** — module load failure, cause unresolved | — |
+| Neo4j AuraDB Free | — | — | — | — | **no** | not run (AUP unresolved) | — |
 | Memgraph Cloud | — | 2 GB | — | — | partial | not run | — |
 | FalkorDB Cloud Free | — | 100 MB | none | — | partial | not run | — |
 
@@ -266,12 +270,33 @@ anywhere in the runner.
 
 Published because a benchmark that reports only its successes is advertising.
 
-- **Three engines failed to start** on the free-tier client: FalkorDB, ArcadeDB and the
-  first two Memgraph attempts. I chased two wrong theories — port mapping, then file
-  permissions — before finding the real cause: the 6.7 GB VM disk was **100% full**, three
-  Docker images having consumed ~3 GB. After pruning, Memgraph came up first try. FalkorDB
-  and ArcadeDB were not retried; 1.7 GB disk and 908 MB RAM leave no room for a JVM engine
-  under a 256 MB cap.
+- **The first three attempts at any self-hosted engine failed** because the 6.7 GB VM disk
+  was **100% full** — three Docker images had consumed ~3 GB, on top of leftover build
+  artifacts from an earlier failed pip install. I chased two wrong theories, port mapping
+  and file permissions, before finding it. After pruning, **Memgraph** came up on the first
+  retry and is fully measured.
+
+- **ArcadeDB failed to start under the 256 MB cap, and it is a clean, expected result.**
+  The container's own log: `os::commit_memory ... failed; error='Not enough space'` — the
+  JVM tried to reserve 1.4 GB of address space and the cgroup refused it. This is exactly
+  the failure this repository predicted before running anything: Neo4j's own documentation
+  puts ~2 GB as the practical floor for a JVM graph engine, and ArcadeDB is JVM-based. Not
+  a bug; a resource ceiling, reported rather than worked around.
+
+- **Neo4j Community also failed to start under the 256 MB cap**, with a clean shutdown and
+  no error text in the log (`ExitCode=0`) — consistent with the same JVM memory floor as
+  ArcadeDB, though less conclusively diagnosed since no crash message was produced.
+
+- **FalkorDB failed for a reason unrelated to either the cap or my configuration**, and I
+  spent real time isolating it before concluding that. The container log reads
+  `Module /var/lib/falkordb/bin/falkordb.so initialization failed... server aborting`. I
+  first suspected a port-mapping mistake in `BOLT_PORT`; correcting it made no difference.
+  I then re-ran the identical image with **no memory cap at all** — the module still failed
+  to load. I checked the host's CPU flags in case the GraphBLAS-based module needed an
+  instruction set the virtualized CPU lacked (`avx avx2 avx512bw avx512cd avx512dq avx512f
+  avx512vl` are all present, so that is not it either). The failure is reproducible,
+  independent of the resource cap, and its root cause is not identified. Reported as an
+  open exclusion rather than a silent one.
 - **The first client provisioning failed entirely.** Ubuntu 26.04 ships Python 3.14; the
   pinned matplotlib and numpy had no wheels for it and building from source was OOM-killed
   on 908 MB. Fixed by splitting requirements — charting is not measurement and no longer

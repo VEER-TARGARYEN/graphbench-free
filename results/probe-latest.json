@@ -1,0 +1,141 @@
+{
+  "environment": {
+    "python": "3.14.4",
+    "platform": {
+      "system": "Linux",
+      "release": "7.0.0-1006-aws",
+      "version": "#6-Ubuntu SMP PREEMPT Tue May 26 12:04:34 UTC 2026",
+      "machine": "x86_64",
+      "processor": ""
+    },
+    "cpu": {
+      "logical": 2,
+      "usable": 2
+    },
+    "ram_total_mb": 908,
+    "neo4j_driver": "5.28.1",
+    "timer": {
+      "platform": "linux",
+      "raised": false,
+      "sleep_granularity_ms": 1.152
+    },
+    "client_location": {
+      "ip": "100.55.72.248",
+      "city": "Ashburn",
+      "region": "Virginia",
+      "country": "US",
+      "org": "AS14618 Amazon.com, Inc."
+    }
+  },
+  "platforms": [
+    {
+      "id": "cognodb",
+      "label": "CognoDB Cloud (c0)",
+      "track": "A",
+      "enabled": true,
+      "advertised": {
+        "published": true,
+        "vcpu": "burst to 0.5",
+        "ram_mb": 512,
+        "disk_gb": 1,
+        "max_connections": 200,
+        "iops": "up to 500",
+        "price_usd_month": 0,
+        "source": "https://cognodb.com/pricing",
+        "verified_on": "2026-08-20"
+      },
+      "reachable": true,
+      "capabilities": {
+        "basic_return": {
+          "supported": true,
+          "why": "Bolt handshake and Cypher parsing"
+        },
+        "parameters": {
+          "supported": true,
+          "why": "parameterised queries - mandatory, never concatenate"
+        },
+        "unwind_create": {
+          "supported": true,
+          "why": "the batching construct every load depends on"
+        },
+        "count_distinct": {
+          "supported": true,
+          "why": "the k-hop metric's aggregate"
+        },
+        "order_by": {
+          "supported": true,
+          "why": "aggregation workload ordering"
+        },
+        "explain": {
+          "supported": true,
+          "why": "plan inspection for root-cause analysis"
+        },
+        "profile": {
+          "supported": true,
+          "why": "profiled execution for root-cause analysis"
+        },
+        "fixed_len_pattern": {
+          "supported": true,
+          "why": "fixed-length multi-hop - the traversal metric"
+        },
+        "var_len_pattern": {
+          "supported": true,
+          "why": "variable-length paths - NOT used by this benchmark, probed only to document support"
+        },
+        "show_indexes": {
+          "supported": true,
+          "why": "index introspection for the fairness ledger"
+        },
+        "dbms_components": {
+          "supported": false,
+          "why": "server identity",
+          "error": "CypherSyntaxError",
+          "detail": "{code: Neo.ClientError.Statement.SyntaxError} {message: There is no procedure with the name `dbms.components` registered for this database instance. Please ensure you've spelled the procedure name cor"
+        },
+        "apoc_present": {
+          "supported": false,
+          "why": "APOC availability (expected absent on managed tiers)",
+          "error": "ClientError",
+          "detail": "{code: Neo.ClientError.Statement.SemanticError} {message: Unknown function 'apoc.version'}"
+        },
+        "gds_present": {
+          "supported": false,
+          "why": "graph algorithms (CognoDB documents these as absent)",
+          "error": "CypherSyntaxError",
+          "detail": "{code: Neo.ClientError.Statement.SyntaxError} {message: There is no procedure with the name `gds.version` registered for this database instance. Please ensure you've spelled the procedure name correct"
+        }
+      },
+      "server": {
+        "round_trip_ms": 48.38,
+        "identity_errors": [
+          "components: CypherSyntaxError"
+        ],
+        "version": [
+          {
+            "1": 1
+          }
+        ]
+      },
+      "baseline_rtt_ms": {
+        "samples": 20,
+        "min": 3.572,
+        "p50": 3.92,
+        "p95": 4.338,
+        "max": 4.338
+      },
+      "counts": {
+        "nodes": 18265,
+        "relationships": 149969
+      },
+      "footprint": {
+        "observable": false,
+        "probes": {
+          "store_sizes": {
+            "error": "CypherSyntaxError"
+          }
+        },
+        "reason": "platform exposes no queryable size or memory metric over Bolt"
+      }
+    }
+  ]
+}
