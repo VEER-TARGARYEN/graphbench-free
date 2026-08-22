@@ -48,39 +48,42 @@ When you create the Memgraph and FalkorDB instances, **pick a us-east region for
 too.** A benchmark where one platform is 3 ms away and another is 80 ms away is not a
 comparison, and no amount of careful percentile reporting fixes it.
 
-## Machine
+## Machine — free options, ranked
 
-**`e2-standard-2`** — 2 vCPU, 8 GB, Ubuntu 24.04 LTS. Roughly $0.067/hour, so about
-**$3.20 for a 48-hour assignment**; delete it afterwards.
+**Oracle Cloud Always Free, region `us-ashburn-1` (Ashburn, VA) — recommended.**
+Free forever, no expiry, and Ashburn is the exact city the CognoDB instance geolocates
+to — likely the lowest RTT of any option here, paid or free. Sign up at
+[cloud.oracle.com](https://signup.cloud.oracle.com) and pick home region
+**US East (Ashburn)** at signup — this cannot be changed later. A card is required for
+identity verification but the Always Free tier is never charged.
 
-Why not smaller: track B runs a 512 MB engine container *and* the load generator on the
-same box. The compose file pins the engine to core 1 and leaves core 0 for the
-generator — on a 1-vCPU machine they would fight for the same core and you would publish
-client queueing as database latency, which is precisely the failure this whole harness is
-built to avoid.
+Shape: **`VM.Standard.A1.Flex`** (Ampere/Arm, up to 4 OCPU / 24 GB, Always Free) if
+your tenancy has Ampere capacity, otherwise **`VM.Standard.E2.1.Micro`** (AMD, 1 GB,
+Always Free — tight, but workable for track A; run one track-B container at a time).
+Image: **Ubuntu 24.04**. Add your SSH key at creation — Oracle doesn't enable password
+auth by default. Console → Compute → Instances → Create Instance.
 
-Why not the always-free `e2-micro`: it is not offered in `us-east4`, and 1 GB cannot hold
-a 512 MB container plus a 40-thread generator.
-
-## Create it
-
-Console: <https://console.cloud.google.com/compute/instances> → **Create instance** →
-Region `us-east4`, Machine type `e2-standard-2`, Boot disk **Ubuntu 24.04 LTS** (20 GB
-is plenty). No inbound firewall rules are needed — the harness only makes outbound
-connections. Then **SSH** from the console.
-
-Or with the `gcloud` CLI:
+**AWS Free Tier, region `us-east-1` (N. Virginia) — alternative.** 12 months free,
+`t2.micro`/`t3.micro`, 750 hrs/month. `us-east-1` is the same metro as Ashburn. Requires
+a card; stays free under the monthly hour limit.
 
 ```bash
-gcloud compute instances create graphbench-client --zone=us-east4-c --machine-type=e2-standard-2 --image-family=ubuntu-2404-lts-amd64 --image-project=ubuntu-os-cloud --boot-disk-size=20GB
+aws ec2 run-instances --image-id ami-0c101f26f147fa7fd --instance-type t2.micro --region us-east-1 --key-name <your-key>
 ```
+
+**GCP Always Free, region `us-east1` (South Carolina) — fallback.** Forever-free
+`e2-micro`, no card charge, but `us-east1` is ~500 km from Ashburn rather than in it —
+still worth measuring, just expect a few ms more than the other two.
 
 ```bash
-gcloud compute ssh graphbench-client --zone=us-east4-c
+gcloud compute instances create graphbench-client --zone=us-east1-b --machine-type=e2-micro --image-family=ubuntu-2404-lts-amd64 --image-project=ubuntu-os-cloud --boot-disk-size=20GB
 ```
 
-AWS equivalent: `t3.small` (2 vCPU, 2 GB) in `us-east-1`, Ubuntu 24.04. The 2 GB is
-tighter but workable if you run one parity container at a time.
+Whichever you pick, **the region choice is a hypothesis, not a guarantee** — the
+bootstrap script prints baseline RTT precisely so you can check it before running
+anything real. If the free tier's smallest shape (1 GB RAM) can't hold a parity
+container and the load generator at once, run track B one container at a time, or skip
+track B on the free VM and note that constraint in the README rather than force it.
 
 ## Set it up
 
