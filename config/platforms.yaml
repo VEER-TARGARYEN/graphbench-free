@@ -129,7 +129,7 @@ platforms:
     label: Neo4j Community 5.x @ parity
     adapter: bolt
     track: B
-    enabled: false
+    enabled: true
     env:
       uri: GBF_NEO4J_CE_URI        # bolt://localhost:7687
       user: GBF_NEO4J_CE_USER
