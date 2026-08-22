@@ -152,7 +152,7 @@ platforms:
     label: Memgraph Community @ parity
     adapter: bolt
     track: B
-    enabled: false
+    enabled: true
     env:
       uri: GBF_MEMGRAPH_PARITY_URI
       user: GBF_MEMGRAPH_PARITY_USER
@@ -175,7 +175,7 @@ platforms:
     label: ArcadeDB @ parity
     adapter: bolt
     track: B
-    enabled: false
+    enabled: true
     env:
       uri: GBF_ARCADEDB_URI
       user: GBF_ARCADEDB_USER
@@ -222,3 +222,25 @@ platforms:
     notes: >-
       Self-test fixture simulating a burstable instance whose CPU-credit bucket drains
       mid-run. Exists to prove the on-time validity gate fires rather than merely existing.
+
+  - id: falkordb_parity
+    label: FalkorDB @ parity
+    adapter: bolt
+    track: B
+    enabled: true
+    env:
+      uri: GBF_FALKORDB_PARITY_URI
+      user: GBF_FALKORDB_PARITY_USER
+      password: GBF_FALKORDB_PARITY_PASSWORD
+    advertised:
+      published: true
+      vcpu: "0.5 (cgroup)"
+      ram_mb: 256
+      disk_gb: 1
+      max_connections: null
+      source: "self-imposed cap, see docker/compose.parity.yml"
+      verified_on: "2026-08-22"
+    notes: >-
+      Redis-derived, RedisGraph successor. Bolt support is documented as experimental
+      and not recommended for production; whether it works over the official Neo4j
+      driver is itself a reportable finding.
