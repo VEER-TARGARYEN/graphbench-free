@@ -1,32 +1,4 @@
 {
-  "environment": {
-    "python": "3.14.4",
-    "platform": {
-      "system": "Linux",
-      "release": "7.0.0-1006-aws",
-      "version": "#6-Ubuntu SMP PREEMPT Tue May 26 12:04:34 UTC 2026",
-      "machine": "x86_64",
-      "processor": ""
-    },
-    "cpu": {
-      "logical": 2,
-      "usable": 2
-    },
-    "ram_total_mb": 908,
-    "neo4j_driver": "5.28.1",
-    "timer": {
-      "platform": "linux",
-      "raised": false,
-      "sleep_granularity_ms": 1.152
-    },
-    "client_location": {
-      "ip": "100.55.72.248",
-      "city": "Ashburn",
-      "region": "Virginia",
-      "country": "US",
-      "org": "AS14618 Amazon.com, Inc."
-    }
-  },
   "platforms": [
     {
       "id": "cognodb",
@@ -106,7 +78,7 @@
         }
       },
       "server": {
-        "round_trip_ms": 48.38,
+        "round_trip_ms": 1544.16,
         "identity_errors": [
           "components: CypherSyntaxError"
         ],
@@ -118,14 +90,14 @@
       },
       "baseline_rtt_ms": {
         "samples": 20,
-        "min": 3.572,
-        "p50": 3.92,
-        "p95": 4.338,
-        "max": 4.338
+        "min": 265.136,
+        "p50": 266.141,
+        "p95": 278.373,
+        "max": 278.373
       },
       "counts": {
-        "nodes": 18265,
-        "relationships": 149969
+        "nodes": 0,
+        "relationships": 0
       },
       "footprint": {
         "observable": false,
