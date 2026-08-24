@@ -9,12 +9,13 @@ histograms are all committed, so the results can be re-derived rather than trust
 I sell nothing and am not affiliated with any database vendor.
 
 > **Status — read this first.** Two engines are fully measured: **CognoDB Cloud (c0)** and
-> **Memgraph Community** under a resource cap. Three further engines — FalkorDB, Neo4j
-> Community, ArcadeDB — were attempted on the same free-tier client and none started; each
-> failure was isolated to a specific, different root cause rather than reported as a
-> generic timeout, and all three are in [What went wrong](#what-went-wrong). The brief asks
-> for five platforms and this has two measured plus three diagnosed exclusions. The
-> methodology is the part I would defend; the coverage is the part I would not.
+> **Memgraph Community**, the latter at two different memory caps. Three further engines —
+> Neo4j Community, ArcadeDB, FalkorDB — were attempted on the same free-tier client and
+> none produced a measurement. Each failed for a different, specifically identified reason
+> rather than a generic timeout, and all three are written up in
+> [What went wrong](#what-went-wrong). The brief asks for five platforms; this has two
+> measured plus three diagnosed exclusions. The methodology is the part I would defend;
+> the coverage is the part I would not.
 
 ---
 
@@ -78,6 +79,27 @@ The practical consequence is the one that matters for tier selection: under a me
 a disk-backed engine degrades gracefully while an in-memory engine hits a wall. Neither
 column here is near that wall at 150k relationships — that is what the headroom sweep
 would test, and it is not run.
+
+## Memory headroom — Memgraph at two caps
+
+The same engine, same dataset, run under a 256 MB and a 384 MB cgroup cap:
+
+| Memgraph, hot p50 | 256 MB | 384 MB |
+|---|---:|---:|
+| Point lookup | 1.25 ms | 1.22 ms |
+| 1-hop traversal | 1.21 ms | 1.25 ms |
+| 3-hop traversal | 1.44 ms | 1.40 ms |
+| Aggregation | 7.13 ms | 7.21 ms |
+| Ingest (rels/sec) | 66,786 | 67,808 |
+
+**Indistinguishable — every difference is inside run-to-run noise.** That is the expected
+result and it is worth stating: Memgraph's own published formula puts scale S at
+`18,265 × 204B + 149,969 × 154B ≈ 27 MB` resident, so both caps are roughly an order of
+magnitude clear of what the data needs. Neither cap is anywhere near the cliff.
+
+This also bounds an interpretation of the CognoDB comparison below: Memgraph is not being
+starved at 256 MB, so the differences there are architectural rather than a handicap
+artefact. Finding the actual in-memory cliff would need scale M or larger, which is not run.
 
 ## Effect of parameter curation
 
@@ -146,10 +168,10 @@ result checksums** and a **terms-of-service audit** ([docs/LEGAL.md](docs/LEGAL.
 | Platform | vCPU | RAM | Disk | Max conns | Specs published? | Measured RTT | Footprint observable |
 |---|---|---|---|---|:--:|---:|:--:|
 | CognoDB Cloud c0 | burst 0.5 | 512 MB | 1 GB | 200 | **yes** (all four) | 3.92 ms | no |
-| Memgraph CE @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | ~0 (loopback) | no |
-| Neo4j CE @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | **excluded** — did not start | — |
-| ArcadeDB @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | **excluded** — JVM OOM at cap | — |
-| FalkorDB @ parity | 0.5 (cgroup) | 256 MB | — | — | self-imposed | **excluded** — module load failure, cause unresolved | — |
+| Memgraph CE @ parity | 0.5 (cgroup) | 256 + 384 MB | — | — | self-imposed | ~0 (loopback) | no |
+| Neo4j CE @ parity | 0.5 (cgroup) | 384 MB | — | — | self-imposed | **excluded** — started, died during load | — |
+| ArcadeDB @ parity | 0.5 (cgroup) | 384 MB | — | — | self-imposed | **excluded** — never served Bolt; ignored the cap | — |
+| FalkorDB @ parity | 0.5 (cgroup) | 384 MB | — | — | self-imposed | **excluded** — Bolt init succeeds, port never accepts | — |
 | Neo4j AuraDB Free | — | — | — | — | **no** | not run (AUP unresolved) | — |
 | Memgraph Cloud | — | 2 GB | — | — | partial | not run | — |
 | FalkorDB Cloud Free | — | 100 MB | none | — | partial | not run | — |
@@ -276,27 +298,41 @@ Published because a benchmark that reports only its successes is advertising.
   and file permissions, before finding it. After pruning, **Memgraph** came up on the first
   retry and is fully measured.
 
-- **ArcadeDB failed to start under the 256 MB cap, and it is a clean, expected result.**
-  The container's own log: `os::commit_memory ... failed; error='Not enough space'` — the
-  JVM tried to reserve 1.4 GB of address space and the cgroup refused it. This is exactly
-  the failure this repository predicted before running anything: Neo4j's own documentation
-  puts ~2 GB as the practical floor for a JVM graph engine, and ArcadeDB is JVM-based. Not
-  a bug; a resource ceiling, reported rather than worked around.
+- **I first misdiagnosed the JVM failures, and the correction is the interesting part.**
+  ArcadeDB's log said `os::commit_memory ... failed; error='Not enough space'` and I
+  reported that as the 256 MB cgroup refusing memory. It was not. The host had
+  `vm.overcommit_memory=0` — heuristic mode — and the **kernel** refused a 1.4 GB
+  address-space *reservation* on a 908 MB machine before the cgroup was ever consulted. A
+  JVM reserves far more virtual address space than it commits, so heuristic overcommit
+  rejects it outright. Setting `vm.overcommit_memory=1` lets the reservation succeed while
+  the cgroup still bounds actual resident usage, which is the thing the parity experiment
+  cares about. I had reported a host kernel policy as an engine resource ceiling.
 
-- **Neo4j Community also failed to start under the 256 MB cap**, with a clean shutdown and
-  no error text in the log (`ExitCode=0`) — consistent with the same JVM memory floor as
-  ArcadeDB, though less conclusively diagnosed since no crash message was produced.
+- **With overcommit fixed, Neo4j Community got further but still did not produce a
+  measurement.** At a 384 MB cap with an explicitly bounded heap (128 MB heap, 64 MB page
+  cache, 96 MB metaspace) it started and completed a Bolt handshake — then died during the
+  load phase: `ServiceUnavailable: Failed to read from defunct connection`. Zero read
+  workloads, zero mixed. My run script had treated a successful connectivity probe as
+  success, which is why an earlier draft of this README wrongly claimed three platforms.
+  The honest reading is that Neo4j Community can *start* inside 384 MB but cannot survive
+  a 150k-relationship load, which is consistent with its own documentation putting ~2 GB
+  as the practical floor.
 
-- **FalkorDB failed for a reason unrelated to either the cap or my configuration**, and I
-  spent real time isolating it before concluding that. The container log reads
-  `Module /var/lib/falkordb/bin/falkordb.so initialization failed... server aborting`. I
-  first suspected a port-mapping mistake in `BOLT_PORT`; correcting it made no difference.
-  I then re-ran the identical image with **no memory cap at all** — the module still failed
-  to load. I checked the host's CPU flags in case the GraphBLAS-based module needed an
-  instruction set the virtualized CPU lacked (`avx avx2 avx512bw avx512cd avx512dq avx512f
-  avx512vl` are all present, so that is not it either). The failure is reproducible,
-  independent of the resource cap, and its root cause is not identified. Reported as an
-  open exclusion rather than a silent one.
+- **ArcadeDB started but never accepted Bolt, and did not respect the cap.** Its log reports
+  `ArcadeDB Server started ... (CPUs=1 MAXRAM=1.93GB)` — 1.93 GB is the host's total, not
+  the 384 MB cgroup limit, so percentage-based JVM sizing was reading the machine rather
+  than the container even with `UseContainerSupport` set. It exited 0 without ever serving
+  the Bolt port.
+
+- **FalkorDB's root cause was found, and it was mine.** The module aborted with
+  `Could not create server TCP listening socket *:6379: bind: Address already in use`
+  because I had set `BOLT_PORT 6379` — which is Redis's own port, so the module collided
+  with the server hosting it. Corrected to a distinct port, the module loads cleanly and
+  logs `Bolt protocol initialized. Port: 7687` — but the port then never accepts a
+  connection from the official Neo4j driver, with the container still running and healthy.
+  That is consistent with FalkorDB's own documentation describing Bolt support as
+  experimental and not recommended for production. Reported as an exclusion with the
+  evidence, not as a resource failure.
 - **The first client provisioning failed entirely.** Ubuntu 26.04 ships Python 3.14; the
   pinned matplotlib and numpy had no wheels for it and building from source was OOM-killed
   on 908 MB. Fixed by splitting requirements — charting is not measurement and no longer

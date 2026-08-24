@@ -1,0 +1,209 @@
+{
+  "run_id": "cap384-neo4j_ce_parity",
+  "started_utc": "2026-08-22T12:41:58Z",
+  "environment": {
+    "python": "3.14.4",
+    "platform": {
+      "system": "Linux",
+      "release": "7.0.0-1006-aws",
+      "version": "#6-Ubuntu SMP PREEMPT Tue May 26 12:04:34 UTC 2026",
+      "machine": "x86_64",
+      "processor": ""
+    },
+    "cpu": {
+      "logical": 2,
+      "usable": 2
+    },
+    "ram_total_mb": 908,
+    "neo4j_driver": "5.28.1",
+    "timer": {
+      "platform": "linux",
+      "raised": false,
+      "sleep_granularity_ms": 1.074
+    },
+    "client_location": {
+      "ip": "100.55.72.248",
+      "city": "Ashburn",
+      "region": "Virginia",
+      "country": "US",
+      "org": "AS14618 Amazon.com, Inc."
+    }
+  },
+  "scale": "S",
+  "phases": [
+    "load",
+    "equivalence",
+    "read",
+    "mixed"
+  ],
+  "warmup_modes": [
+    "cold",
+    "hot"
+  ],
+  "concurrency": [
+    1,
+    10,
+    40
+  ],
+  "iterations": 300,
+  "dataset": {
+    "dataset": "cit-HepPh",
+    "source": "https://snap.stanford.edu/data/cit-HepPh.html",
+    "raw": {
+      "nodes": 34546,
+      "edges": 421578,
+      "edges_sha256": "917e77b3344aed33fd2d849443c9512b7c528b9dc87251d4245fb3777bbe4128",
+      "dates_sha256": "889927d82a95134b44266ba07fd73333fdb741d01bcda557284d0cb05890228f"
+    },
+    "scales": {
+      "M": {
+        "date_cutoff": null,
+        "nodes": 30558,
+        "edges": 347268,
+        "year_min": "1992",
+        "year_max": "2002",
+        "distinct_years": 11,
+        "files": {
+          "nodes.csv": {
+            "sha256": "b570bcc31ab142348390c139799a83db137184a63b20e8151467180380459de9",
+            "bytes": 717660
+          },
+          "edges.csv": {
+            "sha256": "b4c376aeac8ab1e2c4946011addb2729389d449502b8bbc0c4def4c1e2a66a2e",
+            "bytes": 5223036
+          }
+        }
+      },
+      "S": {
+        "date_cutoff": "1999-02-26",
+        "nodes": 18265,
+        "edges": 149969,
+        "year_min": "1992",
+        "year_max": "1999",
+        "distinct_years": 8,
+        "files": {
+          "nodes.csv": {
+            "sha256": "e90eb1b53310e3888770edce04db8c1fb9198ffdb908b81584090dead749cd97",
+            "bytes": 438387
+          },
+          "edges.csv": {
+            "sha256": "76f657b64608789f211100260d128f82eafd2b5b14987cda2169b08e72d14371",
+            "bytes": 2399512
+          }
+        }
+      }
+    },
+    "excluded_nodes_no_date": 3988
+  },
+  "curation": {
+    "scale": "S",
+    "seed": 42,
+    "sample_size": 200,
+    "band_percentiles": [
+      40,
+      60
+    ],
+    "depths": {
+      "1": {
+        "curated": {
+          "band_lo": 5,
+          "band_hi": 8,
+          "candidates_in_band": 3760,
+          "chosen": 200,
+          "frontier_min": 5,
+          "frontier_max": 8,
+          "frontier_median": 6.0,
+          "frontier_stdev": 1.09,
+          "population_median": 6,
+          "population_stdev": 11.08,
+          "population_max": 242
+        },
+        "uncurated": {
+          "chosen": 200,
+          "frontier_min": 1,
+          "frontier_max": 194,
+          "frontier_median": 6.0,
+          "frontier_stdev": 17.49
+        }
+      },
+      "2": {
+        "curated": {
+          "band_lo": 19,
+          "band_hi": 44,
+          "candidates_in_band": 3039,
+          "chosen": 200,
+          "frontier_min": 19,
+          "frontier_max": 44,
+          "frontier_median": 28.0,
+          "frontier_stdev": 7.26,
+          "population_median": 30,
+          "population_stdev": 82.55,
+          "population_max": 993
+        },
+        "uncurated": {
+          "chosen": 200,
+          "frontier_min": 1,
+          "frontier_max": 581,
+          "frontier_median": 35.0,
+          "frontier_stdev": 90.14
+        }
+      },
+      "3": {
+        "curated": {
+          "band_lo": 52,
+          "band_hi": 146,
+          "candidates_in_band": 2702,
+          "chosen": 200,
+          "frontier_min": 52,
+          "frontier_max": 144,
+          "frontier_median": 91.5,
+          "frontier_stdev": 26.48,
+          "population_median": 91,
+          "population_stdev": 312.55,
+          "population_max": 2674
+        },
+        "uncurated": {
+          "chosen": 200,
+          "frontier_min": 1,
+          "frontier_max": 1238,
+          "frontier_median": 107.0,
+          "frontier_stdev": 289.61
+        }
+      }
+    },
+    "dates": {
+      "distinct": 2329,
+      "min": "1992-02-11",
+      "max": "1999-02-26",
+      "rows_per_probe_median": 7,
+      "rows_per_probe_max": 29
+    },
+    "years": {
+      "distinct": 8,
+      "min": "1992",
+      "max": "1999"
+    }
+  },
+  "platform_order": [
+    "neo4j_ce_parity"
+  ],
+  "platforms": {
+    "neo4j_ce_parity": {
+      "id": "neo4j_ce_parity",
+      "label": "Neo4j Community 5.x @ parity",
+      "track": "B",
+      "advertised": {
+        "published": true,
+        "vcpu": "0.5 (cgroup)",
+        "ram_mb": 512,
+        "disk_gb": 1,
+        "max_connections": null,
+        "source": "self-imposed cap, see docker/compose.parity.yml",
+        "verified_on": "2026-08-20"
+      },
+      "notes": "Expected to OOM at 512 MB: the stock image defaults to 512 MB heap + 512 MB pagecache before JVM overhead. That is a RESULT, not a failure - bisect the smallest cap at which it survives and report it. Also the bridge between tracks: running Aura Free and CE at the cap separates \"engine\" from \"tier\".",
+      "error": "ServiceUnavailable: Failed to read from defunct connection IPv4Address(('127.0.0.1', 7687)) (ResolvedIPv4Address(('127.0.0.1', 7687)))"
+    }
+  },
+  "finished_utc": "2026-08-22T12:42:14Z"
+}
